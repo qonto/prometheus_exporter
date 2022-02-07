@@ -5,6 +5,7 @@ module PrometheusExporter::Metric
 
     @default_prefix = nil if !defined?(@default_prefix)
     @default_labels = nil if !defined?(@default_labels)
+    @ignored_labels = nil if !defined?(@ignored_labels)
     @default_aggregation = nil if !defined?(@default_aggregation)
 
     # prefix applied to all metrics
@@ -22,6 +23,14 @@ module PrometheusExporter::Metric
 
     def self.default_labels
       @default_labels || {}
+    end
+
+    def self.ignored_labels=(labels)
+      @ignored_labels = labels
+    end
+
+    def self.ignored_labels
+      @ignored_labels || {}
     end
 
     def self.default_aggregation=(aggregation)
@@ -76,7 +85,8 @@ module PrometheusExporter::Metric
 
     def labels_text(labels)
       labels = (labels || {}).merge(Base.default_labels)
-      if labels && labels.length > 0
+      labels = labels.slice(*labels.keys - ignored_labels)
+      if labels.length > 0
         s = labels.map do |key, value|
           value = value.to_s
           value = escape_value(value) if needs_escape?(value)
@@ -104,6 +114,10 @@ module PrometheusExporter::Metric
           "\\#{m}"
         end
       end
+    end
+
+    def ignored_labels
+      Base.ignored_labels[name] || []
     end
 
     def needs_escape?(str)

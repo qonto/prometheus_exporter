@@ -10,6 +10,7 @@ module PrometheusExporter
   DEFAULT_BIND_ADDRESS = 'localhost'
   DEFAULT_PREFIX = 'ruby_'
   DEFAULT_LABEL = {}
+  DEFAULT_IGNORED_LABELS = {}
   DEFAULT_TIMEOUT = 2
   DEFAULT_REALM = 'Prometheus Exporter'
 

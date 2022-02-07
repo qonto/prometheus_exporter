@@ -41,6 +41,9 @@ def run
     opt.on('--label METRIC_LABEL', "Label to apply to all metrics (default: #{PrometheusExporter::DEFAULT_LABEL})") do |o|
       options[:label] = JSON.parse(o.to_s)
     end
+    opt.on('--ignored-labels LABELS', "(optional) Labels to ignore per metric (default: {})") do |o|
+      options[:ignored_labels] = JSON.parse(o.to_s)
+    end
     opt.on('-c', '--collector FILE', String, "(optional) Custom collector to run") do |o|
       custom_collector_filename = o.to_s
     end

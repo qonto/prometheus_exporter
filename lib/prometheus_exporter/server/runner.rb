@@ -18,6 +18,7 @@ module PrometheusExporter::Server
       @auth = nil
       @realm = nil
       @histogram = nil
+      @ignored_labels = nil
 
       options.each do |k, v|
         send("#{k}=", v) if self.class.method_defined?("#{k}=")
@@ -27,6 +28,7 @@ module PrometheusExporter::Server
     def start
       PrometheusExporter::Metric::Base.default_prefix = prefix
       PrometheusExporter::Metric::Base.default_labels = label
+      PrometheusExporter::Metric::Base.ignored_labels = ignored_labels
 
       if histogram
         PrometheusExporter::Metric::Base.default_aggregation = PrometheusExporter::Metric::Histogram
@@ -52,7 +54,7 @@ module PrometheusExporter::Server
     end
 
     attr_accessor :unicorn_listen_address, :unicorn_pid_file
-    attr_writer :prefix, :port, :bind, :collector_class, :type_collectors, :timeout, :verbose, :server_class, :label, :auth, :realm, :histogram
+    attr_writer :prefix, :port, :bind, :collector_class, :type_collectors, :timeout, :verbose, :server_class, :label, :ignored_labels, :auth, :realm, :histogram
 
     def auth
       @auth || nil
@@ -101,6 +103,10 @@ module PrometheusExporter::Server
 
     def label
       @label ||= PrometheusExporter::DEFAULT_LABEL
+    end
+
+    def ignored_labels
+      @ignored_labels || PrometheusExporter::DEFAULT_IGNORED_LABELS
     end
 
     def histogram

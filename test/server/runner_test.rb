@@ -43,6 +43,8 @@ class PrometheusRunnerTest < Minitest::Test
 
   def teardown
     PrometheusExporter::Metric::Base.default_aggregation = nil
+    PrometheusExporter::Metric::Base.default_labels = PrometheusExporter::DEFAULT_LABEL
+    PrometheusExporter::Metric::Base.ignored_labels = PrometheusExporter::DEFAULT_IGNORED_LABELS
   end
 
   def test_runner_defaults
@@ -55,6 +57,7 @@ class PrometheusRunnerTest < Minitest::Test
     assert_equal(runner.type_collectors, [])
     assert_equal(runner.verbose, false)
     assert_empty(runner.label)
+    assert_empty(runner.ignored_labels)
     assert_nil(runner.auth)
     assert_equal(runner.realm, 'Prometheus Exporter')
   end
@@ -68,6 +71,7 @@ class PrometheusRunnerTest < Minitest::Test
       type_collectors: [TypeCollectorMock],
       verbose: true,
       label: { environment: 'integration' },
+      ignored_labels: { new_http_request_duration_seconds: ['environment'] },
       auth: 'my_htpasswd_file',
       realm: 'test realm',
       histogram: true
@@ -80,11 +84,10 @@ class PrometheusRunnerTest < Minitest::Test
     assert_equal(runner.type_collectors, [TypeCollectorMock])
     assert_equal(runner.verbose, true)
     assert_equal(runner.label, { environment: 'integration' })
+    assert_equal(runner.ignored_labels, { new_http_request_duration_seconds: ['environment'] })
     assert_equal(runner.auth, 'my_htpasswd_file')
     assert_equal(runner.realm, 'test realm')
     assert_equal(runner.histogram, true)
-
-    reset_base_metric_label
   end
 
   def test_runner_start
@@ -99,9 +102,8 @@ class PrometheusRunnerTest < Minitest::Test
     assert_nil(runner.auth)
     assert_equal(runner.realm, 'Prometheus Exporter')
     assert_equal(PrometheusExporter::Metric::Base.default_labels, { environment: 'integration' })
+    assert_equal(runner.ignored_labels, {})
     assert_instance_of(PrometheusExporter::Server::Collector, runner.collector)
-
-    reset_base_metric_label
   end
 
   def test_runner_custom_collector
@@ -147,9 +149,5 @@ class PrometheusRunnerTest < Minitest::Test
     runner.start
 
     assert_equal(PrometheusExporter::Metric::Base.default_aggregation, PrometheusExporter::Metric::Histogram)
-  end
-
-  def reset_base_metric_label
-    PrometheusExporter::Metric::Base.default_labels = {}
   end
 end

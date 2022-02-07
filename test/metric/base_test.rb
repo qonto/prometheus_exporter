@@ -19,6 +19,7 @@ module PrometheusExporter::Metric
       Base.default_prefix = ''
       Base.default_labels = {}
       Base.default_aggregation = nil
+      Base.ignored_labels = PrometheusExporter::DEFAULT_IGNORED_LABELS
     end
 
     it "supports a dynamic prefix" do
@@ -45,6 +46,22 @@ module PrometheusExporter::Metric
         # TYPE a_counter counter
         a_counter{baz="bar",foo="bar"} 2
         a_counter{foo="bar"} 1
+      TEXT
+
+      assert_equal(counter.to_prometheus_text, text)
+    end
+
+    it "supports ignoring labels" do
+      Base.ignored_labels = { a_counter: ["foo"] }
+
+      counter.observe(2, baz: "bar")
+      counter.observe
+
+      text = <<~TEXT
+        # HELP a_counter my amazing counter
+        # TYPE a_counter counter
+        a_counter{baz="bar"} 2
+        a_counter 1
       TEXT
 
       assert_equal(counter.to_prometheus_text, text)

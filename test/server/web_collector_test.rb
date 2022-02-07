@@ -13,6 +13,7 @@ class PrometheusWebCollectorTest < Minitest::Test
 
   def teardown
     PrometheusExporter::Metric::Base.default_aggregation = nil
+    PrometheusExporter::Metric::Base.ignored_labels = PrometheusExporter::DEFAULT_IGNORED_LABELS
   end
 
   def collector
@@ -79,6 +80,41 @@ class PrometheusWebCollectorTest < Minitest::Test
 
     assert_equal 5, metrics.size
     assert(metrics.first.metric_text.include?('http_requests_total{controller="home",action="index",status="200",service="service1"}'))
+  end
+
+  def test_collecting_metrics_with_ignored_labels
+    PrometheusExporter::Metric::Base.default_aggregation = PrometheusExporter::Metric::Histogram
+    PrometheusExporter::Metric::Base.ignored_labels = {'http_request_duration_seconds' => ['status']}
+
+    collector.collect(
+      'type' => 'web',
+      "timings" => {
+        "sql" => {
+          duration: 0.5,
+          count: 40
+        },
+        "redis" => {
+          duration: 0.03,
+          count: 4
+        },
+        "queue" => 0.03,
+        "total_duration" => 1.0
+      },
+      'default_labels' => {
+        'controller' => 'home',
+        'action' => 'index',
+        'status' => 200,
+      },
+    )
+
+    metrics = collector.metrics
+    metrics_lines = metrics.map(&:metric_text).flat_map(&:lines)
+
+    assert_equal 5, metrics.size
+    assert_includes(metrics_lines, "http_request_duration_seconds_bucket{controller=\"home\",action=\"index\",le=\"+Inf\"} 1\n")
+    assert_includes(metrics_lines, "http_request_duration_seconds_count{controller=\"home\",action=\"index\"} 1\n")
+    assert_includes(metrics_lines, "http_request_sql_duration_seconds_bucket{controller=\"home\",action=\"index\",status=\"200\",le=\"+Inf\"} 1\n")
+    assert_includes(metrics_lines, "http_request_sql_duration_seconds_count{controller=\"home\",action=\"index\",status=\"200\"} 1\n")
   end
 
   def test_collecting_metrics_in_histogram_mode

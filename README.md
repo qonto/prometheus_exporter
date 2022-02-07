@@ -25,6 +25,7 @@ To learn more see [Instrumenting Rails with Prometheus](https://samsaffron.com/a
   * [Multi process mode with custom collector](#multi-process-mode-with-custom-collector)
   * [GraphQL support](#graphql-support)
   * [Metrics default prefix / labels](#metrics-default-prefix--labels)
+  * [Metrics ignored labels](#metrics-ignored-labels)
   * [Client default labels](#client-default-labels)
   * [Client default host](#client-default-host)
   * [Histogram mode](#histogram-mode)
@@ -794,6 +795,37 @@ ruby_web_requests{hostname="app-server-01",route="test/route"} 1
 ruby_web_requests{hostname="app-server-01"} 1
 ```
 
+### Metrics ignored labels
+
+_This only works in single process mode._
+
+You can specify labels to be ignored for specific metrics.
+This can be useful if you are looking for reducing the cardinality.
+For example:
+
+```ruby
+# Specify ignored labels for specific metric
+PrometheusExporter::Metric::Base.ignored_labels = { "http_request_duration_seconds" => [:status] }
+
+histogram = PrometheusExporter::Metric::Histogram.new("http_request_duration_seconds", "Time spent in HTTP reqs in seconds.")
+
+histogram.observe(1, status: 200, controller: "some_controller")
+```
+
+Will result in:
+
+```
+# HELP http_request_duration_seconds Time spent in HTTP reqs in seconds.
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{controller="some_controller",le="+Inf"} 1
+http_request_duration_seconds_bucket{controller="some_controller",le="10.0"} 1
+http_request_duration_seconds_bucket{controller="some_controller",le="5.0"} 1
+…
+http_request_duration_seconds_bucket{controller="some_controller",le="0.005"} 0
+http_request_duration_seconds_count{controller="some_controller"} 1
+http_request_duration_seconds_sum{controller="some_controller"} 1.0
+```
+
 ### Exporter Process Configuration
 
 When running the process for `prometheus_exporter` using `bin/prometheus_exporter`, there are several configurations that
@@ -806,6 +838,7 @@ Usage: prometheus_exporter [options]
     -t, --timeout INTEGER            Timeout in seconds for metrics endpoint (default: 2)
         --prefix METRIC_PREFIX       Prefix to apply to all metrics (default: ruby_)
         --label METRIC_LABEL         Label to apply to all metrics (default: {})
+        --ignored-labels LABELS      Labels to ignore per metric (default: {})
     -c, --collector FILE             (optional) Custom collector to run
     -a, --type-collector FILE        (optional) Custom type collectors to run in main collector
     -v, --verbose
@@ -823,15 +856,19 @@ The following will run the process at
 - Port `8080` (default `9394`)
 - Bind to `0.0.0.0` (default `localhost`)
 - Timeout in `1 second` for metrics endpoint (default `2 seconds`)
+- Histogram mode
 - Metric prefix as `foo_` (default `ruby_`)
 - Default labels as `{environment: "integration", foo: "bar"}`
+- Ignore label `status` for metrics `http_request_duration_seconds`
 
 ```bash
 prometheus_exporter -p 8080 \
                     -b 0.0.0.0 \
                     -t 1 \
-                    --label '{"environment": "integration", "foo": "bar"}' \
+                    --histogram
                     --prefix 'foo_'
+                    --label '{"environment": "integration", "foo": "bar"}' \
+                    --ignored-labels '{"http_request_duration_seconds": ["status"]}'
 ```
 
 #### Enabling Basic Authentication
